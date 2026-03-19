@@ -663,10 +663,28 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-const SESSION_KEY = 'tdg_unlocked';
+// ── Device fingerprint ────────────────────────────────
+function getFingerprint() {
+  const data = [
+    navigator.language,
+    navigator.platform,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.hardwareConcurrency,
+  ].join('|');
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    hash = ((hash << 5) - hash) + data.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
 
-// If already unlocked this session, skip key screen
-if (sessionStorage.getItem(SESSION_KEY) === '1') {
+const LOCAL_KEY = 'tdg_key';
+
+// If already unlocked on this device, skip key screen
+if (localStorage.getItem(LOCAL_KEY)) {
   showScreenDirect('screen-home');
 }
 
@@ -686,18 +704,18 @@ async function submitKey() {
     const res = await fetch('/api/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key }),
+      body: JSON.stringify({ key, fingerprint: getFingerprint() }),
     });
     const data = await res.json();
 
     if (data.valid) {
-      sessionStorage.setItem(SESSION_KEY, '1');
+      localStorage.setItem(LOCAL_KEY, key);
       showScreen('screen-home');
     } else {
       const msg = {
-        'Key not found': 'Invalid key. Check your Payhip receipt and try again.',
-        'Key already used': 'This key has already been used. Each key works on one device.',
-      }[data.error] || 'Invalid key. Please try again.';
+        'Key not found': 'Invalid key. Check your receipt and try again.',
+        'This key is registered to a different device.': 'This key is already registered to another device.',
+      }[data.error] || data.error || 'Invalid key. Please try again.';
       showErr(msg);
     }
   } catch (e) {
