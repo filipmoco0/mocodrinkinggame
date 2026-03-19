@@ -1,6 +1,4 @@
 // api/validate.js
-// Validates license key directly against Payhip API + device fingerprinting via Supabase
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -11,7 +9,6 @@ export default async function handler(req, res) {
 
   try {
     const { key, fingerprint } = req.body;
-
     if (!key) return res.status(400).json({ valid: false, error: 'No key provided' });
 
     const cleanKey = key.toUpperCase().trim();
@@ -20,16 +17,15 @@ export default async function handler(req, res) {
     const payhipRes = await fetch(
       `https://payhip.com/api/v2/license/verify?license_key=${encodeURIComponent(cleanKey)}`,
       {
-        headers: {
-          'product-secret-key': process.env.PAYHIP_SECRET_KEY,
-        },
+        method: 'GET',
+        headers: { 'product-secret-key': process.env.PAYHIP_SECRET_KEY },
       }
     );
 
     const payhipData = await payhipRes.json();
 
-    // If Payhip says key is invalid or disabled
-    if (!payhipData?.enabled) {
+    // Payhip wraps response in data object
+    if (!payhipData?.data?.enabled) {
       return res.status(200).json({ valid: false, error: 'Key not found' });
     }
 
@@ -47,7 +43,7 @@ export default async function handler(req, res) {
     const rows = await sbRes.json();
 
     if (!rows.length) {
-      // First time this key is used — save fingerprint
+      // First time — register fingerprint
       await fetch(`${process.env.SUPABASE_URL}/rest/v1/license_keys`, {
         method: 'POST',
         headers: {
@@ -66,10 +62,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ valid: true });
     }
 
-    const row = rows[0];
-
-    // Key exists — check fingerprint matches
-    if (row.fingerprint === fingerprint) {
+    // Key exists — check fingerprint
+    if (rows[0].fingerprint === fingerprint) {
       return res.status(200).json({ valid: true });
     } else {
       return res.status(200).json({
