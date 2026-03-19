@@ -1,0 +1,18 @@
+{
+  "name": "Drinking Games by moco",
+  "short_name": "DrinkGames",
+  "description": "10 drinking games for your phone",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

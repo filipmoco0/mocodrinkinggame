@@ -1,0 +1,1969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Drinking Games</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0a0a;
+    --bg2:      #111111;
+    --bg3:      #1a1a1a;
+    --border:   #2a2a2a;
+    --green:    #00ff88;
+    --green2:   #00cc66;
+    --amber:    #ffaa00;
+    --red:      #ff4455;
+    --cyan:     #00ddff;
+    --dim:      #555555;
+    --text:     #cccccc;
+    --white:    #eeeeee;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-display: 'Bebas Neue', cursive;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Noise texture */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    display: none;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 20px 16px 32px;
+    animation: fadeIn 0.2s ease;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    text-align: center;
+    padding: 24px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .hdr-title {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 8vw, 42px);
+    letter-spacing: 3px;
+    color: var(--green);
+    text-shadow: 0 0 20px rgba(0,255,136,0.4);
+    line-height: 1;
+  }
+
+  .hdr-sub {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  .blink {
+    animation: blink 1.2s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* ── TERMINAL BOX ── */
+  .term-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .term-box::before {
+    content: '● ● ●';
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    font-size: 8px;
+    color: var(--border);
+    letter-spacing: 3px;
+  }
+
+  .term-box-inner { padding-top: 16px; }
+
+  /* ── PROMPT INPUT ── */
+  .prompt-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .prompt-sign {
+    color: var(--green);
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .prompt-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--green);
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    flex: 1;
+    outline: none;
+    padding: 4px 0;
+    caret-color: var(--green);
+  }
+
+  .prompt-input::placeholder { color: var(--dim); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px 20px;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--green);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .btn:active::before { opacity: 0.1; }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-num {
+    color: var(--dim);
+    margin-right: 10px;
+    font-size: 12px;
+  }
+
+  .btn-emoji { margin-right: 8px; }
+
+  .btn + .btn { margin-top: 8px; }
+
+  .btn-amber {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .btn-red {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .btn-cyan {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  .btn-dim {
+    border-color: var(--border);
+    color: var(--dim);
+    font-size: 12px;
+  }
+
+  .btn-big {
+    padding: 18px 20px;
+    font-size: 16px;
+    text-align: center;
+    background: var(--green);
+    color: var(--bg);
+    font-family: var(--font-display);
+    letter-spacing: 3px;
+    border-color: var(--green);
+  }
+
+  .btn-big:active { background: var(--green2); }
+  .btn-big::before { display: none; }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+
+  .tag-green { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .tag-amber { background: rgba(255,170,0,0.1); color: var(--amber); border: 1px solid rgba(255,170,0,0.3); }
+  .tag-red   { background: rgba(255,68,85,0.1);  color: var(--red);   border: 1px solid rgba(255,68,85,0.3); }
+  .tag-cyan  { background: rgba(0,221,255,0.1);  color: var(--cyan);  border: 1px solid rgba(0,221,255,0.3); }
+
+  /* ── GAME CARD ── */
+  .game-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px 16px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .game-card-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .game-card-sub {
+    font-size: 11px;
+    color: var(--dim);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  /* ── STATEMENT ── */
+  .statement {
+    font-size: clamp(15px, 4vw, 18px);
+    color: var(--white);
+    line-height: 1.6;
+    padding: 16px;
+    background: var(--bg3);
+    border-left: 3px solid var(--green);
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 16px;
+  }
+
+  .statement.amber { border-left-color: var(--amber); }
+  .statement.red   { border-left-color: var(--red); }
+  .statement.cyan  { border-left-color: var(--cyan); }
+
+  /* ── PLAYER CHIPS ── */
+  .players-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .player-chip {
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-size: 12px;
+    border: 1px solid;
+  }
+
+  /* ── SCOREBOARD ── */
+  .score-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .score-rank { color: var(--dim); font-size: 12px; width: 20px; }
+  .score-name { flex: 1; color: var(--white); font-size: 14px; }
+  .score-bar-wrap { width: 80px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .score-bar { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s ease; }
+  .score-sips { color: var(--amber); font-size: 13px; width: 50px; text-align: right; }
+
+  /* ── ROUND COUNTER ── */
+  .round-badge {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  /* ── TURN HEADER ── */
+  .turn-hdr {
+    text-align: center;
+    padding: 12px 0 16px;
+    margin-bottom: 4px;
+  }
+
+  .turn-name {
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: 3px;
+    margin-bottom: 2px;
+  }
+
+  .turn-sub { font-size: 11px; color: var(--dim); letter-spacing: 2px; }
+
+  /* ── SPIN ANIMATION ── */
+  .spin-result {
+    text-align: center;
+    padding: 24px;
+    animation: pulse 0.5s ease;
+  }
+
+  @keyframes pulse {
+    0%   { transform: scale(0.8); opacity: 0; }
+    60%  { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .spin-bottle { font-size: 48px; display: block; margin-bottom: 8px; }
+  .spin-name { font-family: var(--font-display); font-size: 32px; letter-spacing: 3px; color: var(--red); }
+  .spin-arrow { font-size: 14px; color: var(--dim); margin-bottom: 4px; }
+
+  /* ── VOTE GRID ── */
+  .vote-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .vote-btn {
+    padding: 14px 8px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+
+  .vote-btn.selected-green { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.05); }
+  .vote-btn.selected-red   { border-color: var(--red);   color: var(--red);   background: rgba(255,68,85,0.05); }
+  .vote-btn:active { transform: scale(0.96); }
+
+  /* ── RESULT BOX ── */
+  .result-box {
+    text-align: center;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    background: var(--bg2);
+  }
+
+  .result-emoji { font-size: 36px; margin-bottom: 8px; }
+  .result-text  { font-size: 14px; color: var(--white); line-height: 1.5; }
+  .result-sips  { font-family: var(--font-display); font-size: 28px; color: var(--red); letter-spacing: 2px; margin-top: 8px; }
+
+  /* ── TIMER ── */
+  .timer-ring {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-family: var(--font-display);
+    font-size: 28px;
+    color: var(--green);
+    transition: border-color 0.3s, color 0.3s;
+  }
+  .timer-ring.danger { border-color: var(--red); color: var(--red); }
+
+  /* ── NAV BAR ── */
+  .nav-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 100;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 12px 8px;
+    background: none;
+    border: none;
+    color: var(--dim);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-align: center;
+    transition: color 0.15s;
+  }
+
+  .nav-btn:active { color: var(--green); }
+  .nav-btn-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+
+  /* ── MISC ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  .label {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .pb32 { padding-bottom: 80px; }
+
+  .center { text-align: center; }
+
+  .mt8  { margin-top: 8px; }
+  .mt16 { margin-top: 16px; }
+  .mt24 { margin-top: 24px; }
+
+  .color-green  { color: var(--green); }
+  .color-amber  { color: var(--amber); }
+  .color-red    { color: var(--red); }
+  .color-cyan   { color: var(--cyan); }
+  .color-dim    { color: var(--dim); }
+  .color-white  { color: var(--white); }
+
+  /* Input number */
+  input[type=number] {
+    -moz-appearance: textfield;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--green);
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 20px;
+    width: 60px;
+    text-align: center;
+    outline: none;
+    caret-color: var(--green);
+    padding: 4px 0;
+  }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  /* Pulse dot */
+  .pulse-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulseDot 1.5s ease infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* Card flip for Kings */
+  .card-display {
+    text-align: center;
+    padding: 24px 16px;
+    background: var(--bg3);
+    border: 2px solid var(--amber);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    animation: cardFlip 0.3s ease;
+  }
+  @keyframes cardFlip {
+    from { transform: rotateY(90deg); opacity: 0; }
+    to   { transform: rotateY(0deg); opacity: 1; }
+  }
+  .card-rank { font-family: var(--font-display); font-size: 48px; color: var(--amber); letter-spacing: 4px; }
+  .card-suit { font-size: 24px; margin-bottom: 4px; }
+  .card-rule { font-family: var(--font-display); font-size: 18px; color: var(--white); letter-spacing: 2px; margin-bottom: 8px; }
+  .card-desc { font-size: 13px; color: var(--text); line-height: 1.5; }
+
+  /* Kings cup fill */
+  .kings-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .king-icon { font-size: 24px; opacity: 0.2; transition: opacity 0.3s; }
+  .king-icon.drawn { opacity: 1; }
+
+  /* Spin animation */
+  @keyframes spinBottle {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(var(--spin-deg)); }
+  }
+  .bottle-spinner {
+    font-size: 48px;
+    display: inline-block;
+    transform-origin: center;
+  }
+  .bottle-spinner.spinning {
+    animation: spinBottle var(--spin-dur) cubic-bezier(0.17, 0.67, 0.12, 1) forwards;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ SCREEN: KEY ENTRY ══ -->
+  <div class="screen active" id="screen-key">
+    <div class="hdr">
+      <div class="hdr-title">DRINKING<br>GAMES</div>
+      <div class="hdr-sub">v1.0 <span class="blink">█</span></div>
+    </div>
+    <div style="text-align:center;font-size:10px;color:var(--dim);margin-bottom:16px;letter-spacing:2px">by moco</div>
+
+    <div class="term-box">
+      <div class="term-box-inner">
+        <div class="label">$ unlock --key</div>
+        <div class="prompt-line">
+          <span class="prompt-sign">&gt;</span>
+          <input class="prompt-input" id="license-key-input" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div id="key-error" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-big mt8" onclick="submitKey()" id="unlock-btn">UNLOCK</button>
+    <div class="divider"></div>
+    <div class="label center">enter your license key from payhip</div>
+    <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--dim)">
+      don't have a key? <a href="https://payhip.com/b/z3WBO" style="color:var(--green)">buy here</a>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: HOME ══ -->
+  <div class="screen" id="screen-home">
+    <div class="hdr">
+      <div class="hdr-title">DRINKING<br>GAMES</div>
+      <div class="hdr-sub">v1.0 <span class="blink">█</span></div>
+    </div>
+
+    <div class="term-box">
+      <div class="term-box-inner">
+        <div class="label">$ players --setup</div>
+        <div class="prompt-line" style="margin-bottom:16px">
+          <span class="prompt-sign">&gt;</span>
+          <span style="color:var(--text);font-size:13px">How many players?</span>
+          <input type="number" id="player-count" min="1" max="20" value="2" style="margin-left:auto">
+        </div>
+        <div id="player-names-wrap"></div>
+        <button class="btn mt8" onclick="addPlayerField()">+ add player</button>
+      </div>
+    </div>
+
+    <button class="btn btn-big mt16" onclick="goToMenu()">START GAME</button>
+    <div class="divider"></div>
+    <div class="label center">10 games included</div>
+  </div>
+
+  <!-- ══ SCREEN: MENU ══ -->
+  <div class="screen" id="screen-menu">
+    <div class="hdr">
+      <div class="hdr-title">SELECT<br>GAME</div>
+      <div class="hdr-sub" id="menu-players-line"></div>
+    </div>
+    <div id="game-list" class="pb32"></div>
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="showScreen('screen-home')">
+        <span class="nav-btn-icon">👥</span>players
+      </button>
+      <button class="nav-btn" onclick="showScoreboard()">
+        <span class="nav-btn-icon">📊</span>scores
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: SCOREBOARD ══ -->
+  <div class="screen" id="screen-scoreboard">
+    <div class="hdr">
+      <div class="hdr-title">SCORE<br>BOARD</div>
+    </div>
+    <div id="scoreboard-list"></div>
+    <button class="btn btn-dim mt16" onclick="showScreen('screen-menu')">← back to menu</button>
+  </div>
+
+  <!-- ══ SCREEN: GAME ══ -->
+  <div class="screen" id="screen-game">
+    <div id="game-content"></div>
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="showScreen('screen-menu')">
+        <span class="nav-btn-icon">🏠</span>menu
+      </button>
+      <button class="nav-btn" onclick="showScoreboard()">
+        <span class="nav-btn-icon">📊</span>scores
+      </button>
+      <button class="nav-btn" onclick="nextTurn()">
+        <span class="nav-btn-icon">⏭</span>next
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+const SESSION_KEY = 'tdg_unlocked';
+
+// If already unlocked this session, skip key screen
+if (sessionStorage.getItem(SESSION_KEY) === '1') {
+  showScreenDirect('screen-home');
+}
+
+async function submitKey() {
+  const input = document.getElementById('license-key-input');
+  const btn   = document.getElementById('unlock-btn');
+  const err   = document.getElementById('key-error');
+  const key   = input.value.trim();
+
+  if (!key) { showErr('Please enter your license key.'); return; }
+
+  btn.textContent = 'CHECKING...';
+  btn.disabled = true;
+  err.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key }),
+    });
+    const data = await res.json();
+
+    if (data.valid) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      showScreen('screen-home');
+    } else {
+      const msg = {
+        'Key not found': 'Invalid key. Check your Payhip receipt and try again.',
+        'Key already used': 'This key has already been used. Each key works on one device.',
+      }[data.error] || 'Invalid key. Please try again.';
+      showErr(msg);
+    }
+  } catch (e) {
+    showErr('Connection error. Please try again.');
+  } finally {
+    btn.textContent = 'UNLOCK';
+    btn.disabled = false;
+  }
+}
+
+function showErr(msg) {
+  const err = document.getElementById('key-error');
+  err.textContent = '✘ ' + msg;
+  err.style.display = 'block';
+}
+
+// Allow pressing Enter to submit
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('license-key-input');
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') submitKey(); });
+});
+
+function showScreenDirect(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+const state = {
+  players: [],
+  sips: {},
+  currentGame: null,
+  turn: 0,
+  round: 0,
+  deck: [],
+  usedCards: [],
+  kingsDrawn: 0,
+  gameRules: [],
+  pendingAction: null,
+  voteData: null,
+  timerInterval: null,
+};
+
+const COLORS = ['color-green','color-amber','color-cyan','color-red','color-white'];
+function playerColor(i) { return COLORS[i % COLORS.length]; }
+
+const CHIP_COLORS = [
+  {border:'var(--green)',color:'var(--green)'},
+  {border:'var(--amber)',color:'var(--amber)'},
+  {border:'var(--cyan)',color:'var(--cyan)'},
+  {border:'var(--red)',color:'var(--red)'},
+  {border:'#aa88ff',color:'#aa88ff'},
+];
+function chipColor(i){ return CHIP_COLORS[i % CHIP_COLORS.length]; }
+
+// ══════════════════════════════════════════════════════
+// SETUP
+// ══════════════════════════════════════════════════════
+function syncPlayerFields() {
+  const n = parseInt(document.getElementById('player-count').value) || 2;
+  const wrap = document.getElementById('player-names-wrap');
+  const existing = wrap.querySelectorAll('input');
+  const vals = Array.from(existing).map(i => i.value);
+  wrap.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const div = document.createElement('div');
+    div.className = 'prompt-line';
+    div.innerHTML = `<span class="prompt-sign ${playerColor(i)}">&gt;</span>
+      <input class="prompt-input" placeholder="Player ${i+1} name" value="${vals[i]||''}">`;
+    wrap.appendChild(div);
+  }
+}
+
+function addPlayerField() {
+  const inp = document.getElementById('player-count');
+  inp.value = parseInt(inp.value) + 1;
+  syncPlayerFields();
+}
+
+document.getElementById('player-count').addEventListener('input', syncPlayerFields);
+syncPlayerFields();
+
+function goToMenu() {
+  const inputs = document.querySelectorAll('#player-names-wrap input');
+  state.players = Array.from(inputs).map((inp,i) => inp.value.trim() || `Player ${i+1}`);
+  state.sips = {};
+  state.players.forEach(p => state.sips[p] = 0);
+  state.turn = 0;
+
+  const line = document.getElementById('menu-players-line');
+  line.innerHTML = state.players.map((p,i) => `<span class="${playerColor(i)}">${p}</span>`).join(' · ');
+
+  buildGameList();
+  showScreen('screen-menu');
+}
+
+// ══════════════════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════════════════════
+// GAME LIST
+// ══════════════════════════════════════════════════════
+const GAMES = [
+  { id:'tod',   emoji:'🎴', name:'Truth or Dare',        color:'btn-amber', sub:'25 truths · 25 dares' },
+  { id:'nhie',  emoji:'🙈', name:'Never Have I Ever',    color:'',          sub:'30 statements' },
+  { id:'stb',   emoji:'🍾', name:'Spin the Bottle',      color:'btn-red',   sub:'animated spin · challenges' },
+  { id:'kings', emoji:'👑', name:'Kings Cup',            color:'btn-amber', sub:'full 52 card deck' },
+  { id:'mlt',   emoji:'🏆', name:'Most Likely To',       color:'btn-cyan',  sub:'group voting' },
+  { id:'wyr',   emoji:'🤔', name:'Would You Rather',     color:'',          sub:'pick a side · minority drinks' },
+  { id:'ht',    emoji:'🌶️', name:'Hot Takes',            color:'btn-red',   sub:'agree or disagree' },
+  { id:'rf',    emoji:'⚡', name:'Rapid Fire',           color:'btn-amber', sub:'10 second timer' },
+  { id:'conf',  emoji:'🤫', name:'Confessions',          color:'',          sub:'spill it or drink' },
+  { id:'ttl',   emoji:'🎭', name:'Two Truths & a Lie',   color:'btn-cyan',  sub:'lie convincingly' },
+];
+
+function buildGameList() {
+  const wrap = document.getElementById('game-list');
+  wrap.innerHTML = GAMES.map((g,i) => `
+    <button class="btn ${g.color}" onclick="startGame('${g.id}')">
+      <span class="btn-num">[${i+1}]</span>
+      <span class="btn-emoji">${g.emoji}</span>
+      ${g.name}
+      <span style="float:right;font-size:10px;color:var(--dim)">${g.sub}</span>
+    </button>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// SCOREBOARD
+// ══════════════════════════════════════════════════════
+function showScoreboard() {
+  const list = document.getElementById('scoreboard-list');
+  const ranked = Object.entries(state.sips).sort((a,b)=>b[1]-a[1]);
+  const max = ranked[0]?.[1] || 1;
+  list.innerHTML = ranked.map(([name,sips],i) => {
+    const c = chipColor(i);
+    const pct = Math.round((sips/max)*100);
+    return `<div class="score-row">
+      <div class="score-rank">#${i+1}</div>
+      <div class="score-name" style="color:${c.color}">${name}</div>
+      <div class="score-bar-wrap"><div class="score-bar" style="width:${pct}%;background:${c.color}"></div></div>
+      <div class="score-sips">${sips} sips</div>
+    </div>`;
+  }).join('');
+  showScreen('screen-scoreboard');
+}
+
+function addSips(player, n) {
+  state.sips[player] = (state.sips[player]||0) + n;
+}
+
+// ══════════════════════════════════════════════════════
+// GAME DATA
+// ══════════════════════════════════════════════════════
+const TRUTHS = [
+  "What's the most embarrassing thing you've done while drunk?",
+  "Have you ever lied to get out of plans? What did you say?",
+  "What's the weirdest thing you've googled this week?",
+  "Have you ever had a crush on someone in this room?",
+  "What's the pettiest reason you've ever been angry?",
+  "What's one secret you've never told your parents?",
+  "Have you ever ghosted someone? Why?",
+  "What's the most childish thing you still do?",
+  "What's your most irrational fear?",
+  "Have you ever cheated at a board game?",
+  "What's the last white lie you told?",
+  "Have you ever accidentally liked an old photo while stalking someone?",
+  "What's the most embarrassing song on your playlist?",
+  "Have you ever faked being sick to skip something?",
+  "What's the worst date you've ever been on?",
+  "What's something you pretend to enjoy but secretly hate?",
+  "Have you ever re-gifted a present?",
+  "What's the longest you've gone without showering?",
+  "Have you ever blamed someone else for something you did?",
+  "What's the most desperate thing you've done for food?",
+  "Have you ever eavesdropped on a conversation?",
+  "What's a habit you have that others would find weird?",
+  "Have you ever pretended to be busy to avoid someone?",
+  "What's the most embarrassing thing in your search history?",
+  "Have you ever walked out on a bill?",
+];
+
+const DARES = [
+  "Do your best impression of someone in this room.",
+  "Let the group go through your camera roll for 30 seconds.",
+  "Text your last contact 'we need to talk' and wait for a reply.",
+  "Do 15 push-ups or drink 1 sip for every one you can't finish.",
+  "Speak in an accent chosen by the group until your next turn.",
+  "Let the group write a post on your social media.",
+  "Call a random contact, say 'I know what you did', then hang up.",
+  "Do a 30-second stand-up comedy set — drink if nobody laughs.",
+  "Do your best catwalk across the room.",
+  "Sing the chorus of a song chosen by the player to your left.",
+  "Talk in slow motion for the next 3 minutes.",
+  "Do your best robot dance for 20 seconds.",
+  "Tell an embarrassing story in exactly 30 seconds.",
+  "Try to lick your elbow — drink if you can't.",
+  "Narrate everything you do for the next 2 minutes.",
+  "Talk in rhymes for the next 3 rounds or drink.",
+  "Let the group give you a nickname for the rest of the game.",
+  "Do your best impression of a movie character the group chooses.",
+  "Drink every time you speak for the next 2 rounds.",
+  "Let the person to your left go through your texts for 20 seconds.",
+  "Attempt a cartwheel — drink if you fail or refuse.",
+  "Act like a cat for the next 2 minutes.",
+  "Let someone draw on your hand.",
+  "Speak only in questions until your next turn.",
+  "Do your best villain monologue for 30 seconds.",
+];
+
+const NHIE = [
+  "Never have I ever been kicked out of a bar.",
+  "Never have I ever sent a risky text to the wrong person.",
+  "Never have I ever fallen asleep in public.",
+  "Never have I ever lied about my age.",
+  "Never have I ever skinny dipped.",
+  "Never have I ever eaten an entire pizza by myself.",
+  "Never have I ever called in sick when perfectly fine.",
+  "Never have I ever cried at a commercial.",
+  "Never have I ever walked out of a movie because it was too bad.",
+  "Never have I ever been on a blind date.",
+  "Never have I ever broken a bone.",
+  "Never have I ever binge-watched an entire season in one day.",
+  "Never have I ever stolen food from a coworker's lunch.",
+  "Never have I ever flirted to get out of a speeding ticket.",
+  "Never have I ever rage-quit a video game.",
+  "Never have I ever forgotten someone's name right after meeting them.",
+  "Never have I ever accidentally called a teacher 'mum' or 'dad'.",
+  "Never have I ever snuck food into a cinema.",
+  "Never have I ever left a terrible review for a business.",
+  "Never have I ever dined and dashed.",
+  "Never have I ever kissed someone I just met.",
+  "Never have I ever gone on a spontaneous trip with no plan.",
+  "Never have I ever lied on my CV.",
+  "Never have I ever cried on public transport.",
+  "Never have I ever spent over €200 on a single night out.",
+  "Never have I ever pretended to speak a foreign language.",
+  "Never have I ever re-gifted a present.",
+  "Never have I ever argued with a stranger online for over an hour.",
+  "Never have I ever paid for something with only coins.",
+  "Never have I ever been mistaken for someone else.",
+];
+
+const SPIN_CHALLENGES = [
+  "Give {target} a genuine compliment.",
+  "Stare into {target}'s eyes for 10 seconds without laughing.",
+  "Let {target} post anything on your social media.",
+  "Tell {target} a secret about yourself.",
+  "Do your best impression of {target}.",
+  "Whisper something embarrassing into {target}'s ear.",
+  "Trade seats with {target} for the next 2 rounds.",
+  "Let {target} draw on your hand.",
+  "Tell {target} one thing you genuinely like about them.",
+  "Give {target} a 10-second shoulder massage.",
+  "Let {target} go through your texts for 20 seconds.",
+  "Do a dramatic bow to {target}.",
+  "High-five {target} with your feet.",
+  "Hold {target}'s hand for 30 seconds.",
+  "Let {target} style your hair for 2 rounds.",
+];
+
+const KINGS_RULES = {
+  'A':  ['Waterfall 🌊', 'Everyone starts drinking. You can\'t stop until the person before you stops, starting from the card drawer.'],
+  '2':  ['You 👉',       'Pick someone to drink 2 sips.'],
+  '3':  ['Me 👈',        'You drink 3 sips.'],
+  '4':  ['Floor 🪴',     'Last person to touch the floor drinks!'],
+  '5':  ['Guys 🙋',      'All guys/masc players drink.'],
+  '6':  ['Chicks 💅',    'All girls/femme players drink.'],
+  '7':  ['Heaven ✨',    'Last person to raise their hand drinks!'],
+  '8':  ['Mate 🤝',      'Pick a drinking buddy — they drink whenever you drink for the rest of the game.'],
+  '9':  ['Rhyme 🎵',     'Say a word. Going around, everyone must rhyme. First to fail drinks.'],
+  '10': ['Categories 📦','Pick a category (e.g. car brands). Go around — first to fail drinks.'],
+  'J':  ['Make a Rule 📜','Create a rule that lasts the whole game. Anyone who breaks it drinks.'],
+  'Q':  ['Questions ❓', 'Ask anyone a question. They must reply with a question. First to answer normally drinks.'],
+  'K':  ['King\'s Cup 👑','Pour some of your drink into the King\'s Cup. 4th King drawer drinks the whole cup!'],
+};
+const SUITS = ['♠','♥','♦','♣'];
+
+const MLT_PROMPTS = [
+  "Most likely to become famous",
+  "Most likely to get lost in their own city",
+  "Most likely to text the wrong person something risky",
+  "Most likely to be on a reality TV show",
+  "Most likely to eat the last slice without asking",
+  "Most likely to still be awake at 5am",
+  "Most likely to cry at a Disney movie",
+  "Most likely to start a cult",
+  "Most likely to forget their own birthday",
+  "Most likely to argue with a vending machine",
+  "Most likely to be found sleeping at a party",
+  "Most likely to go viral for something stupid",
+  "Most likely to survive a zombie apocalypse",
+  "Most likely to accidentally like a 3-year-old photo",
+  "Most likely to become a millionaire",
+  "Most likely to get banned from a store",
+  "Most likely to name their pet after a food",
+  "Most likely to move to another country on a whim",
+  "Most likely to show up late to their own wedding",
+  "Most likely to challenge a stranger to a dance-off",
+];
+
+const WYR_QUESTIONS = [
+  ["Never use social media again", "Never watch TV/streaming again"],
+  ["Always be 10 minutes late", "Always be 20 minutes early"],
+  ["Know when you'll die", "Know how you'll die"],
+  ["Be able to fly", "Be able to turn invisible"],
+  ["Live in the city forever", "Live in the countryside forever"],
+  ["Never be able to lie", "Never be able to tell the truth"],
+  ["Eat only sweet food forever", "Eat only savoury food forever"],
+  ["Be famous but hated", "Be unknown but loved"],
+  ["Speak every language", "Play every instrument"],
+  ["Have a photographic memory", "Be able to forget anything you want"],
+  ["Always feel cold", "Always feel hot"],
+  ["Fight 100 duck-sized horses", "Fight 1 horse-sized duck"],
+  ["Know all the secrets of the universe", "Live forever"],
+  ["Always be overdressed", "Always be underdressed"],
+  ["Have hiccups forever", "Always feel like sneezing"],
+  ["Be incredibly funny but ugly", "Incredibly attractive but boring"],
+  ["Talk to animals", "Talk to the dead"],
+  ["Have no sleep for a week", "Have no food for a week"],
+  ["Be able to read minds", "Be able to see the future"],
+  ["Always speak your mind", "Never speak again"],
+];
+
+const HOT_TAKES = [
+  "Pineapple belongs on pizza.",
+  "Cats are better pets than dogs.",
+  "Die Hard is a Christmas movie.",
+  "Cereal before milk is objectively wrong.",
+  "A hot dog is a sandwich.",
+  "GIFs should be pronounced 'jif'.",
+  "Summer is the worst season.",
+  "Breakfast food is the best food at any time of day.",
+  "Texting is better than calling.",
+  "The book is almost never better than the movie.",
+  "Spicy food is overrated.",
+  "Fast food is better than fine dining.",
+  "Naps are a waste of time.",
+  "Social media has done more harm than good.",
+  "Reality TV is genuinely good entertainment.",
+  "Mornings are better than evenings.",
+  "It's fine to recline your seat on a plane.",
+  "Paying for a gym is a waste — just exercise outside.",
+  "Online friendships are just as real as in-person ones.",
+  "Travelling is overrated and overhyped.",
+  "Working from home is better in every way than the office.",
+  "Dessert should be eaten before the main course.",
+  "Silence in social situations is underrated.",
+  "People who walk slowly in public should be fined.",
+  "Astrology is just as valid as psychology.",
+];
+
+const RAPID_FIRE = [
+  ["Name 5 countries in Europe", 5],
+  ["Name 5 animals that start with 'S'", 5],
+  ["Name 5 things in a kitchen", 5],
+  ["Name 4 US states", 4],
+  ["Name 5 TV shows from the 2000s", 5],
+  ["Name 3 types of pasta", 3],
+  ["Name 5 sports", 5],
+  ["Name 4 things at a beach", 4],
+  ["Name 5 things that are red", 5],
+  ["Name 4 car brands", 4],
+  ["Name 3 dances", 3],
+  ["Name 5 fruits (not apple or banana)", 5],
+  ["Name 4 Marvel superheroes", 4],
+  ["Name 5 things in a bathroom", 5],
+  ["Name 3 board games", 3],
+  ["Name 4 languages", 4],
+  ["Name 5 dog breeds", 5],
+  ["Name 4 things that fly", 4],
+  ["Name 3 cocktails", 3],
+  ["Name 5 capital cities", 5],
+];
+
+const CONFESSIONS = [
+  "Confess the last time you lied to a friend.",
+  "Confess something you've done that you've never told anyone.",
+  "Confess your most embarrassing drunk moment.",
+  "Confess something you pretend to like but actually hate.",
+  "Confess a time you were way too jealous of someone.",
+  "Confess the pettiest thing you've done for revenge.",
+  "Confess something you've stolen (even if minor).",
+  "Confess a time you were genuinely mean to someone.",
+  "Confess an embarrassing crush you've had.",
+  "Confess the most ridiculous thing you've spent money on.",
+  "Confess a time you completely embarrassed yourself in public.",
+  "Confess a time you talked badly about someone and got caught.",
+  "Confess the last time you cried and why.",
+  "Confess something you'd be embarrassed for your family to know.",
+  "Confess the worst excuse you've ever made to cancel plans.",
+  "Confess a habit you're embarrassed about.",
+  "Confess a time you cheated at something.",
+  "Confess the most dramatic overreaction you've had.",
+  "Confess a time you pretended to be someone you're not.",
+  "Confess something you googled late at night that you regret.",
+];
+
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+function currentPlayer() { return state.players[state.turn % state.players.length]; }
+
+function playerChips(players) {
+  return `<div class="players-row">${players.map((p,i) => {
+    const c = chipColor(i);
+    return `<span class="player-chip" style="border-color:${c.border};color:${c.color}">${p}</span>`;
+  }).join('')}</div>`;
+}
+
+function turnHeader(player, sub='YOUR TURN') {
+  const i = state.players.indexOf(player);
+  const c = chipColor(i);
+  return `<div class="turn-hdr">
+    <div class="turn-name" style="color:${c.color}">${player}</div>
+    <div class="turn-sub">${sub}</div>
+  </div>`;
+}
+
+function drinkResult(player, sips, msg='') {
+  addSips(player, sips);
+  return `<div class="result-box">
+    <div class="result-emoji">🍺</div>
+    <div class="result-text">${msg || `${player} drinks`}</div>
+    <div class="result-sips">${sips} SIP${sips!==1?'S':''}</div>
+  </div>`;
+}
+
+function safeResult(msg='Nice one! ✔') {
+  return `<div class="result-box" style="border-color:var(--green)">
+    <div class="result-emoji">✅</div>
+    <div class="result-text color-green">${msg}</div>
+  </div>`;
+}
+
+function setContent(html) {
+  document.getElementById('game-content').innerHTML = html;
+  window.scrollTo(0,0);
+}
+
+function nextTurn() {
+  state.turn++;
+  state.pendingAction = null;
+  if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+  if (state.currentGame) renderGame(state.currentGame);
+}
+
+// ══════════════════════════════════════════════════════
+// START GAME
+// ══════════════════════════════════════════════════════
+function startGame(id) {
+  state.currentGame = id;
+  state.turn = 0;
+  state.round = 0;
+  state.pendingAction = null;
+  state.kingsDrawn = 0;
+  state.gameRules = [];
+
+  if (id === 'nhie') state.deck = shuffle(NHIE);
+  if (id === 'mlt')  state.deck = shuffle(MLT_PROMPTS);
+  if (id === 'wyr')  state.deck = shuffle(WYR_QUESTIONS);
+  if (id === 'ht')   state.deck = shuffle(HOT_TAKES);
+  if (id === 'rf')   state.deck = shuffle(RAPID_FIRE);
+  if (id === 'conf') state.deck = shuffle(CONFESSIONS);
+  if (id === 'tod')  { state.deck = shuffle(TRUTHS); state.deck2 = shuffle(DARES); }
+  if (id === 'kings') {
+    const d = [];
+    SUITS.forEach(s => Object.keys(KINGS_RULES).forEach(r => d.push({rank:r,suit:s})));
+    state.deck = shuffle(d);
+  }
+  if (id === 'ttl') { state.deck = []; state.ttlPhase = 'input'; state.ttlStatements = []; state.ttlLieIdx = 0; }
+  if (id === 'stb') { state.spinning = false; }
+
+  showScreen('screen-game');
+  renderGame(id);
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER GAME
+// ══════════════════════════════════════════════════════
+function renderGame(id) {
+  const fns = {
+    tod: renderTOD, nhie: renderNHIE, stb: renderSTB,
+    kings: renderKings, mlt: renderMLT, wyr: renderWYR,
+    ht: renderHT, rf: renderRF, conf: renderConf, ttl: renderTTL,
+  };
+  if (fns[id]) fns[id]();
+}
+
+// ── TRUTH OR DARE ──────────────────────────────────────
+function renderTOD() {
+  const player = currentPlayer();
+  if (state.pendingAction === 'show') {
+    const isT = state.todType === 'truth';
+    const card = isT ? pick(state.deck) : pick(state.deck2);
+    setContent(`
+      ${turnHeader(player)}
+      <div class="round-badge">${isT ? '🎴 TRUTH' : '🎲 DARE'}</div>
+      <div class="statement ${isT?'cyan':'amber'}">${card}</div>
+      <button class="btn mt8" onclick="todComplete()">✔ completed</button>
+      <button class="btn btn-red mt8" onclick="todSkip()">✘ skip (drink 3)</button>
+    `);
+    return;
+  }
+  if (state.pendingAction === 'result') {
+    setContent(`
+      ${state.todResult}
+      <button class="btn btn-dim mt16" onclick="nextTurn()">next turn →</button>
+    `);
+    return;
+  }
+  setContent(`
+    ${turnHeader(player)}
+    ${playerChips(state.players)}
+    <div class="label">pick one:</div>
+    <button class="btn btn-cyan" onclick="todPick('truth')">🎴 TRUTH</button>
+    <button class="btn btn-amber mt8" onclick="todPick('dare')">🎲 DARE</button>
+  `);
+}
+
+function todPick(type) {
+  state.todType = type;
+  state.pendingAction = 'show';
+  renderTOD();
+}
+
+function todComplete() {
+  state.todResult = safeResult('Completed! 🎉');
+  state.pendingAction = 'result';
+  renderTOD();
+}
+
+function todSkip() {
+  const player = currentPlayer();
+  state.todResult = drinkResult(player, 3, `${player} skipped!`);
+  state.pendingAction = 'result';
+  renderTOD();
+}
+
+// ── NEVER HAVE I EVER ──────────────────────────────────
+function renderNHIE() {
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">🎉</div><div class="game-card-title mt16">Game Over!</div><div class="color-dim mt8">All statements done.</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  if (state.pendingAction === 'vote') {
+    renderNHIEVote();
+    return;
+  }
+  if (state.pendingAction === 'result') {
+    setContent(`
+      ${state.nhieResult}
+      <button class="btn btn-dim mt16" onclick="nhieNext()">next statement →</button>
+    `);
+    return;
+  }
+  state.round++;
+  state.currentStatement = state.deck.pop();
+  state.nhieVotes = {};
+  state.pendingAction = 'vote';
+  renderNHIEVote();
+}
+
+function renderNHIEVote() {
+  const voted = Object.keys(state.nhieVotes);
+  const remaining = state.players.filter(p => !voted.includes(p));
+  const current = remaining[0];
+
+  if (!current) {
+    // all voted
+    const drinkers = Object.entries(state.nhieVotes).filter(([,v])=>v).map(([p])=>p);
+    let result = '';
+    if (drinkers.length) {
+      drinkers.forEach(p => addSips(p, 1));
+      result = `<div class="result-box"><div class="result-emoji">🍺</div>
+        <div class="result-text">${drinkers.join(', ')} drink${drinkers.length>1?'':'s'} 1 sip!</div></div>`;
+    } else {
+      result = safeResult('Nobody drinks — saints! 😇');
+    }
+    state.nhieResult = result;
+    state.pendingAction = 'result';
+    setContent(`${result}<button class="btn btn-dim mt16" onclick="nhieNext()">next statement →</button>`);
+    return;
+  }
+
+  const i = state.players.indexOf(current);
+  const c = chipColor(i);
+  setContent(`
+    <div class="round-badge">ROUND ${state.round} · ${voted.length}/${state.players.length} voted</div>
+    <div class="statement">${state.currentStatement}</div>
+    <div class="turn-hdr">
+      <div class="turn-name" style="color:${c.color}">${current}</div>
+      <div class="turn-sub">HAVE YOU DONE THIS?</div>
+    </div>
+    <div class="vote-grid">
+      <button class="vote-btn" onclick="nhieVote('${current}',true)">✅ YES<br><span style="font-size:10px;color:var(--dim)">drink 1 sip</span></button>
+      <button class="vote-btn" onclick="nhieVote('${current}',false)">❌ NO<br><span style="font-size:10px;color:var(--dim)">stay safe</span></button>
+    </div>
+  `);
+}
+
+function nhieVote(player, yes) {
+  state.nhieVotes[player] = yes;
+  renderNHIEVote();
+}
+
+function nhieNext() {
+  state.pendingAction = null;
+  renderNHIE();
+}
+
+// ── SPIN THE BOTTLE ────────────────────────────────────
+function renderSTB() {
+  const player = currentPlayer();
+  if (state.players.length < 2) {
+    setContent(`<div class="result-box"><div class="result-text color-red">Need at least 2 players!</div></div>`);
+    return;
+  }
+  if (state.pendingAction === 'challenge') {
+    const target = state.spinTarget;
+    const challenge = pick(SPIN_CHALLENGES).replace('{target}', `<strong>${target}</strong>`);
+    setContent(`
+      ${turnHeader(player, 'CHALLENGE')}
+      <div class="spin-result">
+        <span class="spin-bottle">🍾</span>
+        <div class="spin-arrow">lands on</div>
+        <div class="spin-name">${target}</div>
+      </div>
+      <div class="statement amber">${challenge}</div>
+      <button class="btn" onclick="stbComplete()">✔ completed</button>
+      <button class="btn btn-red mt8" onclick="stbSkip()">✘ refuse (drink 2)</button>
+    `);
+    return;
+  }
+  if (state.pendingAction === 'result') {
+    setContent(`
+      ${state.stbResult}
+      <button class="btn btn-dim mt16" onclick="nextTurn()">next turn →</button>
+    `);
+    return;
+  }
+
+  setContent(`
+    ${turnHeader(player, 'SPIN THE BOTTLE')}
+    <div style="text-align:center;padding:32px 0">
+      <span class="bottle-spinner" id="bottle-icon">🍾</span>
+    </div>
+    <button class="btn btn-big" onclick="doSpin()">SPIN</button>
+  `);
+}
+
+function doSpin() {
+  const player = currentPlayer();
+  const candidates = state.players.filter(p => p !== player);
+  const target = pick(candidates);
+  state.spinTarget = target;
+
+  const icon = document.getElementById('bottle-icon');
+  if (icon) {
+    const deg = 720 + Math.floor(Math.random()*360);
+    icon.style.setProperty('--spin-deg', deg+'deg');
+    icon.style.setProperty('--spin-dur', '1.5s');
+    icon.classList.add('spinning');
+    setTimeout(() => {
+      state.pendingAction = 'challenge';
+      renderSTB();
+    }, 1600);
+  } else {
+    state.pendingAction = 'challenge';
+    renderSTB();
+  }
+}
+
+function stbComplete() {
+  state.stbResult = safeResult('Challenge completed! 🎉');
+  state.pendingAction = 'result';
+  renderSTB();
+}
+
+function stbSkip() {
+  const player = currentPlayer();
+  state.stbResult = drinkResult(player, 2, `${player} refused!`);
+  state.pendingAction = 'result';
+  renderSTB();
+}
+
+// ── KINGS CUP ──────────────────────────────────────────
+function renderKings() {
+  const player = currentPlayer();
+  if (state.pendingAction === 'card') {
+    const card = state.currentCard;
+    const [title, desc] = KINGS_RULES[card.rank];
+    const isKing = card.rank === 'K';
+    setContent(`
+      ${turnHeader(player, 'CARD DRAWN')}
+      <div class="kings-row">
+        ${[0,1,2,3].map(i=>`<span class="king-icon ${i<state.kingsDrawn?'drawn':''}">👑</span>`).join('')}
+      </div>
+      <div class="card-display">
+        <div class="card-suit">${card.suit}</div>
+        <div class="card-rank">${card.rank}</div>
+        <div class="card-rule">${title}</div>
+        <div class="card-desc">${desc}</div>
+      </div>
+      ${isKing && state.kingsDrawn >= 4 ? `<div class="result-box" style="border-color:var(--red)"><div class="result-emoji">👑🍺</div><div class="result-sips">DRINK THE CUP!</div></div>` : ''}
+      ${state.gameRules.length ? `<div class="label">active rules:</div>${state.gameRules.map(r=>`<div style="font-size:12px;color:var(--dim);margin-bottom:4px">• ${r}</div>`).join('')}` : ''}
+      <button class="btn mt16" onclick="kingsNext()">next turn →</button>
+    `);
+    return;
+  }
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">🃏</div><div class="game-card-title mt16">Deck Empty!</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  setContent(`
+    ${turnHeader(player)}
+    <div class="kings-row">
+      ${[0,1,2,3].map(i=>`<span class="king-icon ${i<state.kingsDrawn?'drawn':''}">👑</span>`).join('')}
+    </div>
+    ${state.gameRules.length ? `<div class="label">active rules:</div>${state.gameRules.map(r=>`<div style="font-size:12px;color:var(--dim);margin-bottom:4px">• ${r}</div>`).join('')}<div class="divider"></div>` : ''}
+    <div class="label">${state.deck.length} cards remaining</div>
+    <button class="btn btn-amber btn-big mt8" onclick="kingsDraw()">DRAW CARD</button>
+  `);
+}
+
+function kingsDraw() {
+  const card = state.deck.pop();
+  state.currentCard = card;
+  if (card.rank === 'K') {
+    state.kingsDrawn++;
+    if (state.kingsDrawn >= 4) addSips(currentPlayer(), 10);
+  }
+  if (card.rank === 'J') {
+    const rule = prompt('Enter your rule:') || 'No rule entered';
+    state.gameRules.push(`${currentPlayer()}: ${rule}`);
+  }
+  state.pendingAction = 'card';
+  renderKings();
+}
+
+function kingsNext() {
+  state.pendingAction = null;
+  state.turn++;
+  renderKings();
+}
+
+// ── MOST LIKELY TO ─────────────────────────────────────
+function renderMLT() {
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">🏆</div><div class="game-card-title mt16">Game Over!</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  if (state.pendingAction === 'vote') { renderMLTVote(); return; }
+  if (state.pendingAction === 'result') {
+    setContent(`${state.mltResult}<button class="btn btn-dim mt16" onclick="mltNext()">next →</button>`);
+    return;
+  }
+  state.round++;
+  state.currentPrompt = state.deck.pop();
+  state.mltVotes = {};
+  state.pendingAction = 'vote';
+  renderMLTVote();
+}
+
+function renderMLTVote() {
+  const voted = Object.keys(state.mltVotes);
+  const remaining = state.players.filter(p => !voted.includes(p));
+  const voter = remaining[0];
+
+  if (!voter) {
+    const tally = {};
+    state.players.forEach(p => tally[p] = 0);
+    Object.values(state.mltVotes).forEach(v => tally[v] = (tally[v]||0)+1);
+    const sorted = Object.entries(tally).sort((a,b)=>b[1]-a[1]);
+    const winner = sorted[0][0];
+    const winVotes = sorted[0][1];
+    addSips(winner, winVotes);
+
+    const bars = sorted.map(([name,votes],i) => {
+      const c = chipColor(state.players.indexOf(name));
+      const pct = Math.round(votes/state.players.length*100);
+      return `<div class="score-row">
+        <div class="score-name" style="color:${c.color}">${name}</div>
+        <div class="score-bar-wrap" style="width:60px"><div class="score-bar" style="width:${pct}%;background:${c.color}"></div></div>
+        <div class="score-sips">${votes} vote${votes!==1?'s':''}</div>
+      </div>`;
+    }).join('');
+
+    state.mltResult = `<div class="game-card">${bars}</div>${drinkResult(winner, winVotes, `${winner} drinks ${winVotes} sip${winVotes!==1?'s':''}!`)}`;
+    state.pendingAction = 'result';
+    setContent(`${state.mltResult}<button class="btn btn-dim mt16" onclick="mltNext()">next →</button>`);
+    return;
+  }
+
+  const i = state.players.indexOf(voter);
+  const c = chipColor(i);
+  setContent(`
+    <div class="round-badge">ROUND ${state.round} · ${voted.length}/${state.players.length} voted</div>
+    <div class="statement">${state.currentPrompt}</div>
+    <div class="turn-hdr">
+      <div class="turn-name" style="color:${c.color}">${voter}</div>
+      <div class="turn-sub">VOTE</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${state.players.map((p,pi) => {
+        const pc = chipColor(pi);
+        return `<button class="vote-btn" style="border-color:${pc.border};color:${pc.color};text-align:left;padding:12px 16px" onclick="mltVote('${voter}','${p}')">${p}</button>`;
+      }).join('')}
+    </div>
+  `);
+}
+
+function mltVote(voter, target) {
+  state.mltVotes[voter] = target;
+  renderMLTVote();
+}
+
+function mltNext() {
+  state.pendingAction = null;
+  renderMLT();
+}
+
+// ── WOULD YOU RATHER ───────────────────────────────────
+function renderWYR() {
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">🤔</div><div class="game-card-title mt16">Game Over!</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  if (state.pendingAction === 'vote') { renderWYRVote(); return; }
+  if (state.pendingAction === 'result') {
+    setContent(`${state.wyrResult}<button class="btn btn-dim mt16" onclick="wyrNext()">next →</button>`);
+    return;
+  }
+  state.round++;
+  state.currentWYR = state.deck.pop();
+  state.wyrVotes = {};
+  state.pendingAction = 'vote';
+  renderWYRVote();
+}
+
+function renderWYRVote() {
+  const [a, b] = state.currentWYR;
+  const voted = Object.keys(state.wyrVotes);
+  const remaining = state.players.filter(p => !voted.includes(p));
+  const voter = remaining[0];
+
+  if (!voter) {
+    const aVoters = Object.entries(state.wyrVotes).filter(([,v])=>v==='A').map(([p])=>p);
+    const bVoters = Object.entries(state.wyrVotes).filter(([,v])=>v==='B').map(([p])=>p);
+    let result = '';
+    if (aVoters.length === bVoters.length) {
+      state.players.forEach(p => addSips(p,1));
+      result = `<div class="result-box"><div class="result-emoji">🤝</div><div class="result-text">Tie! Everyone drinks 1 sip.</div></div>`;
+    } else {
+      const minority = aVoters.length < bVoters.length ? aVoters : bVoters;
+      const sips = Math.abs(aVoters.length - bVoters.length);
+      minority.forEach(p => addSips(p, sips));
+      result = drinkResult(minority.join(', '), sips, `${minority.join(', ')} drink${minority.length>1?'':'s'} ${sips} sip${sips!==1?'s':''}!`);
+    }
+    state.wyrResult = `<div class="game-card">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <span class="tag tag-cyan">A: ${aVoters.join(', ')||'nobody'}</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <span class="tag tag-amber">B: ${bVoters.join(', ')||'nobody'}</span>
+      </div>
+    </div>${result}`;
+    state.pendingAction = 'result';
+    setContent(`${state.wyrResult}<button class="btn btn-dim mt16" onclick="wyrNext()">next →</button>`);
+    return;
+  }
+
+  const i = state.players.indexOf(voter);
+  const c = chipColor(i);
+  setContent(`
+    <div class="round-badge">ROUND ${state.round} · ${voted.length}/${state.players.length} voted</div>
+    <div class="turn-hdr">
+      <div class="turn-name" style="color:${c.color}">${voter}</div>
+      <div class="turn-sub">WOULD YOU RATHER</div>
+    </div>
+    <div class="vote-grid">
+      <button class="vote-btn" onclick="wyrVote('${voter}','A')" style="min-height:80px">
+        <strong style="color:var(--cyan)">[A]</strong><br><span style="font-size:12px">${a}</span>
+      </button>
+      <button class="vote-btn" onclick="wyrVote('${voter}','B')" style="min-height:80px">
+        <strong style="color:var(--amber)">[B]</strong><br><span style="font-size:12px">${b}</span>
+      </button>
+    </div>
+  `);
+}
+
+function wyrVote(voter, choice) {
+  state.wyrVotes[voter] = choice;
+  renderWYRVote();
+}
+
+function wyrNext() {
+  state.pendingAction = null;
+  renderWYR();
+}
+
+// ── HOT TAKES ──────────────────────────────────────────
+function renderHT() {
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">🌶️</div><div class="game-card-title mt16">Game Over!</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  if (state.pendingAction === 'vote') { renderHTVote(); return; }
+  if (state.pendingAction === 'result') {
+    setContent(`${state.htResult}<button class="btn btn-dim mt16" onclick="htNext()">next →</button>`);
+    return;
+  }
+  state.round++;
+  state.currentHT = state.deck.pop();
+  state.htVotes = {};
+  state.pendingAction = 'vote';
+  renderHTVote();
+}
+
+function renderHTVote() {
+  const voted = Object.keys(state.htVotes);
+  const remaining = state.players.filter(p => !voted.includes(p));
+  const voter = remaining[0];
+
+  if (!voter) {
+    const agree = Object.entries(state.htVotes).filter(([,v])=>v).map(([p])=>p);
+    const disagree = Object.entries(state.htVotes).filter(([,v])=>!v).map(([p])=>p);
+    let result = '';
+    if (agree.length === disagree.length) {
+      state.players.forEach(p => addSips(p,1));
+      result = `<div class="result-box"><div class="result-emoji">🤝</div><div class="result-text">Tie! Everyone drinks 1 sip.</div></div>`;
+    } else {
+      const minority = agree.length < disagree.length ? agree : disagree;
+      minority.forEach(p => addSips(p,1));
+      if (minority.length === 0) {
+        result = safeResult('Nobody in the minority — no one drinks!');
+      } else {
+        result = drinkResult(minority.join(', '), 1, `${minority.join(', ')} drink${minority.length>1?'':'s'} 1 sip!`);
+      }
+    }
+    state.htResult = result;
+    state.pendingAction = 'result';
+    setContent(`${result}<button class="btn btn-dim mt16" onclick="htNext()">next →</button>`);
+    return;
+  }
+
+  const i = state.players.indexOf(voter);
+  const c = chipColor(i);
+  setContent(`
+    <div class="round-badge">ROUND ${state.round} · ${voted.length}/${state.players.length} voted</div>
+    <div class="statement red">🌶️ ${state.currentHT}</div>
+    <div class="turn-hdr">
+      <div class="turn-name" style="color:${c.color}">${voter}</div>
+      <div class="turn-sub">DO YOU AGREE?</div>
+    </div>
+    <div class="vote-grid">
+      <button class="vote-btn selected-green" onclick="htVote('${voter}',true)">✅ AGREE</button>
+      <button class="vote-btn selected-red" onclick="htVote('${voter}',false)">❌ DISAGREE</button>
+    </div>
+  `);
+}
+
+function htVote(voter, agree) {
+  state.htVotes[voter] = agree;
+  renderHTVote();
+}
+
+function htNext() {
+  state.pendingAction = null;
+  renderHT();
+}
+
+// ── RAPID FIRE ─────────────────────────────────────────
+function renderRF() {
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">⚡</div><div class="game-card-title mt16">Game Over!</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  if (state.pendingAction === 'timer') { renderRFTimer(); return; }
+  if (state.pendingAction === 'result') {
+    setContent(`${state.rfResult}<button class="btn btn-dim mt16" onclick="rfNext()">next →</button>`);
+    return;
+  }
+
+  const player = currentPlayer();
+  const [question] = state.deck[state.deck.length-1];
+  setContent(`
+    ${turnHeader(player)}
+    <div class="label">GET READY:</div>
+    <div class="statement amber">⚡ ${question}</div>
+    <div class="label">you have 10 seconds once you tap GO!</div>
+    <button class="btn btn-big mt16" onclick="rfStart()">GO!</button>
+  `);
+}
+
+function rfStart() {
+  state.deck.pop();
+  state.rfTimeLeft = 10;
+  state.rfStartTime = Date.now();
+  state.pendingAction = 'timer';
+
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    state.rfTimeLeft = Math.max(0, 10 - Math.floor((Date.now()-state.rfStartTime)/1000));
+    const ring = document.getElementById('rf-timer');
+    if (ring) {
+      ring.textContent = state.rfTimeLeft;
+      ring.className = 'timer-ring' + (state.rfTimeLeft <= 3 ? ' danger' : '');
+    }
+    if (state.rfTimeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      rfTimesUp();
+    }
+  }, 200);
+
+  renderRFTimer();
+}
+
+function renderRFTimer() {
+  const player = currentPlayer();
+  setContent(`
+    ${turnHeader(player, 'ANSWER NOW!')}
+    <div class="timer-ring ${state.rfTimeLeft<=3?'danger':''}" id="rf-timer">${state.rfTimeLeft}</div>
+    <button class="btn" onclick="rfGotIt()">✔ got it!</button>
+    <button class="btn btn-red mt8" onclick="rfFail()">✘ failed</button>
+  `);
+}
+
+function rfTimesUp() {
+  const player = currentPlayer();
+  state.rfResult = drinkResult(player, 2, `Time's up! ${player} drinks 2 sips.`);
+  state.pendingAction = 'result';
+  setContent(`${state.rfResult}<button class="btn btn-dim mt16" onclick="rfNext()">next →</button>`);
+}
+
+function rfGotIt() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.rfResult = safeResult('Nailed it! ⚡');
+  state.pendingAction = 'result';
+  setContent(`${state.rfResult}<button class="btn btn-dim mt16" onclick="rfNext()">next →</button>`);
+}
+
+function rfFail() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  const player = currentPlayer();
+  state.rfResult = drinkResult(player, 2, `${player} failed — drink 2 sips!`);
+  state.pendingAction = 'result';
+  setContent(`${state.rfResult}<button class="btn btn-dim mt16" onclick="rfNext()">next →</button>`);
+}
+
+function rfNext() {
+  state.pendingAction = null;
+  state.turn++;
+  renderRF();
+}
+
+// ── CONFESSIONS ────────────────────────────────────────
+function renderConf() {
+  if (!state.deck.length) {
+    setContent(`<div class="center mt24"><div style="font-size:48px">🤫</div><div class="game-card-title mt16">Game Over!</div></div>
+    <button class="btn btn-dim mt16" onclick="showScoreboard()">view scoreboard</button>`);
+    return;
+  }
+  if (state.pendingAction === 'confessed') { renderConfVote(); return; }
+  if (state.pendingAction === 'result') {
+    setContent(`${state.confResult}<button class="btn btn-dim mt16" onclick="confNext()">next →</button>`);
+    return;
+  }
+
+  const player = currentPlayer();
+  const prompt = state.deck.pop();
+  state.currentConfPrompt = prompt;
+  state.confVotes = {};
+  setContent(`
+    ${turnHeader(player)}
+    <div class="statement">🤫 ${prompt}</div>
+    <div class="label">confess out loud to the group, then tap done</div>
+    <button class="btn mt8" onclick="confDone()">✔ confessed</button>
+    <button class="btn btn-red mt8" onclick="confSkip()">✘ refuse (drink 3)</button>
+  `);
+}
+
+function confSkip() {
+  const player = currentPlayer();
+  state.confResult = drinkResult(player, 3, `${player} refused — drink 3 sips!`);
+  state.pendingAction = 'result';
+  setContent(`${state.confResult}<button class="btn btn-dim mt16" onclick="confNext()">next →</button>`);
+}
+
+function confDone() {
+  state.pendingAction = 'confessed';
+  renderConfVote();
+}
+
+function renderConfVote() {
+  const player = currentPlayer();
+  const voters = state.players.filter(p => p !== player);
+  const voted = Object.keys(state.confVotes);
+  const remaining = voters.filter(p => !voted.includes(p));
+  const voter = remaining[0];
+
+  if (!voter) {
+    const spicy = Object.values(state.confVotes).filter(Boolean).length;
+    const total = voters.length;
+    let result = '';
+    if (spicy >= total/2) {
+      result = safeResult('🌶️ Certified spicy! ' + player + ' is safe.');
+    } else {
+      addSips(player, 1);
+      result = drinkResult(player, 1, 'Not spicy enough! ' + player + ' drinks 1 extra sip.');
+    }
+    state.confResult = result;
+    state.pendingAction = 'result';
+    setContent(`${result}<button class="btn btn-dim mt16" onclick="confNext()">next →</button>`);
+    return;
+  }
+
+  const i = state.players.indexOf(voter);
+  const c = chipColor(i);
+  setContent(`
+    <div class="label">was it spicy enough?</div>
+    <div class="turn-hdr">
+      <div class="turn-name" style="color:${c.color}">${voter}</div>
+      <div class="turn-sub">VOTE</div>
+    </div>
+    <div class="vote-grid">
+      <button class="vote-btn selected-red" onclick="confVote('${voter}',true)">🌶️ SPICY</button>
+      <button class="vote-btn" onclick="confVote('${voter}',false)">😐 MILD</button>
+    </div>
+  `);
+}
+
+function confVote(voter, spicy) {
+  state.confVotes[voter] = spicy;
+  renderConfVote();
+}
+
+function confNext() {
+  state.pendingAction = null;
+  state.turn++;
+  renderConf();
+}
+
+// ── TWO TRUTHS AND A LIE ───────────────────────────────
+function renderTTL() {
+  const player = currentPlayer();
+
+  if (state.ttlPhase === 'input') {
+    setContent(`
+      ${turnHeader(player, 'TWO TRUTHS & A LIE')}
+      <div class="label">enter 3 statements — 2 true, 1 lie:</div>
+      <div class="prompt-line mt8"><span class="prompt-sign color-cyan">[1]</span>
+        <input class="prompt-input" id="ttl-s1" placeholder="Statement 1"></div>
+      <div class="prompt-line mt8"><span class="prompt-sign color-cyan">[2]</span>
+        <input class="prompt-input" id="ttl-s2" placeholder="Statement 2"></div>
+      <div class="prompt-line mt8"><span class="prompt-sign color-cyan">[3]</span>
+        <input class="prompt-input" id="ttl-s3" placeholder="Statement 3"></div>
+      <div class="label mt16">which number is the lie?</div>
+      <div class="vote-grid mt8">
+        <button class="vote-btn" onclick="ttlSetLie(0)">[1]</button>
+        <button class="vote-btn" onclick="ttlSetLie(1)">[2]</button>
+      </div>
+      <button class="vote-btn mt8" style="width:100%" onclick="ttlSetLie(2)">[3]</button>
+    `);
+    return;
+  }
+
+  if (state.ttlPhase === 'guess') { renderTTLGuess(); return; }
+
+  if (state.ttlPhase === 'result') {
+    setContent(`${state.ttlResult}<button class="btn btn-dim mt16" onclick="ttlNext()">next →</button>`);
+    return;
+  }
+}
+
+function ttlSetLie(idx) {
+  const s1 = document.getElementById('ttl-s1')?.value.trim();
+  const s2 = document.getElementById('ttl-s2')?.value.trim();
+  const s3 = document.getElementById('ttl-s3')?.value.trim();
+  if (!s1 || !s2 || !s3) { alert('Fill in all 3 statements first!'); return; }
+  state.ttlStatements = [s1, s2, s3];
+  state.ttlLieIdx = idx;
+  state.ttlGuesses = {};
+  state.ttlPhase = 'guess';
+  renderTTLGuess();
+}
+
+function renderTTLGuess() {
+  const player = currentPlayer();
+  const guessers = state.players.filter(p => p !== player);
+  const guessed = Object.keys(state.ttlGuesses);
+  const remaining = guessers.filter(p => !guessed.includes(p));
+  const guesser = remaining[0];
+
+  if (!guesser) {
+    const correct = Object.entries(state.ttlGuesses).filter(([,g])=>g===state.ttlLieIdx).map(([p])=>p);
+    const wrong   = Object.entries(state.ttlGuesses).filter(([,g])=>g!==state.ttlLieIdx).map(([p])=>p);
+    wrong.forEach(p => addSips(p,1));
+    if (!correct.length) state.players.filter(p=>p!==player).forEach(p=>addSips(p,2));
+
+    const lie = state.ttlStatements[state.ttlLieIdx];
+    let result = `<div class="result-box" style="border-color:var(--green)">
+      <div class="result-emoji">🎭</div>
+      <div class="result-text">The lie was: <strong>${lie}</strong></div>
+    </div>`;
+    if (wrong.length) result += drinkResult(wrong.join(', '), 1, `${wrong.join(', ')} guessed wrong — 1 sip!`);
+    if (!correct.length) result += `<div class="result-box" style="border-color:var(--red)"><div class="result-text color-red">Nobody got it! Everyone else drinks 2 sips!</div></div>`;
+
+    state.ttlResult = result;
+    state.ttlPhase = 'result';
+    setContent(`${result}<button class="btn btn-dim mt16" onclick="ttlNext()">next →</button>`);
+    return;
+  }
+
+  const i = state.players.indexOf(guesser);
+  const c = chipColor(i);
+  setContent(`
+    <div class="label">${player}'s statements:</div>
+    ${state.ttlStatements.map((s,idx)=>`<div class="statement" style="margin-bottom:8px">[${idx+1}] ${s}</div>`).join('')}
+    <div class="turn-hdr">
+      <div class="turn-name" style="color:${c.color}">${guesser}</div>
+      <div class="turn-sub">WHICH IS THE LIE?</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      ${[0,1,2].map(idx=>`<button class="vote-btn" style="flex:1" onclick="ttlGuess('${guesser}',${idx})">[${idx+1}]</button>`).join('')}
+    </div>
+  `);
+}
+
+function ttlGuess(guesser, idx) {
+  state.ttlGuesses[guesser] = idx;
+  renderTTLGuess();
+}
+
+function ttlNext() {
+  state.ttlPhase = 'input';
+  state.ttlStatements = [];
+  state.ttlGuesses = {};
+  state.turn++;
+  renderTTL();
+}
+</script>
+</body>
+</html>
