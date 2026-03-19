@@ -1,7 +1,5 @@
 // api/validate.js
-// Validates license key with device fingerprinting.
-// First use: saves fingerprint tied to key.
-// Repeat use: only works if fingerprint matches (same device).
+// Validates license key directly against Payhip API + device fingerprinting via Supabase
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,12 +13,28 @@ export default async function handler(req, res) {
     const { key, fingerprint } = req.body;
 
     if (!key) return res.status(400).json({ valid: false, error: 'No key provided' });
-    if (!fingerprint) return res.status(400).json({ valid: false, error: 'No fingerprint provided' });
 
     const cleanKey = key.toUpperCase().trim();
 
-    // Look up key in Supabase
-    const response = await fetch(
+    // Step 1 — Verify key with Payhip API
+    const payhipRes = await fetch(
+      `https://payhip.com/api/v2/license/verify?license_key=${encodeURIComponent(cleanKey)}`,
+      {
+        headers: {
+          'product-secret-key': process.env.PAYHIP_SECRET_KEY,
+        },
+      }
+    );
+
+    const payhipData = await payhipRes.json();
+
+    // If Payhip says key is invalid or disabled
+    if (!payhipData?.enabled) {
+      return res.status(200).json({ valid: false, error: 'Key not found' });
+    }
+
+    // Step 2 — Check fingerprint in Supabase
+    const sbRes = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/license_keys?key=eq.${encodeURIComponent(cleanKey)}&select=*`,
       {
         headers: {
@@ -30,37 +44,31 @@ export default async function handler(req, res) {
       }
     );
 
-    const rows = await response.json();
+    const rows = await sbRes.json();
 
     if (!rows.length) {
-      return res.status(200).json({ valid: false, error: 'Key not found' });
+      // First time this key is used — save fingerprint
+      await fetch(`${process.env.SUPABASE_URL}/rest/v1/license_keys`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': process.env.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          key: cleanKey,
+          fingerprint,
+          used: true,
+          used_at: new Date().toISOString(),
+        }),
+      });
+      return res.status(200).json({ valid: true });
     }
 
     const row = rows[0];
 
-    // Key has no fingerprint yet — first time use, register this device
-    if (!row.fingerprint) {
-      await fetch(
-        `${process.env.SUPABASE_URL}/rest/v1/license_keys?key=eq.${encodeURIComponent(cleanKey)}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env.SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify({
-            fingerprint,
-            used: true,
-            used_at: new Date().toISOString(),
-          }),
-        }
-      );
-      return res.status(200).json({ valid: true });
-    }
-
-    // Key has a fingerprint — check if it matches
+    // Key exists — check fingerprint matches
     if (row.fingerprint === fingerprint) {
       return res.status(200).json({ valid: true });
     } else {
