@@ -466,6 +466,7 @@
   }
 
   .pb32 { padding-bottom: 80px; }
+  @media (min-width: 768px) { .pb32 { padding-bottom: 24px; } }
 
   .center { text-align: center; }
 
@@ -553,6 +554,130 @@
   }
   .bottle-spinner.spinning {
     animation: spinBottle var(--spin-dur) cubic-bezier(0.17, 0.67, 0.12, 1) forwards;
+  }
+
+  /* ── DESKTOP LAYOUT (768px+) ── */
+  @media (min-width: 768px) {
+    #app {
+      max-width: 900px;
+      flex-direction: row;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    /* Left panel — fixed sidebar */
+    .screen {
+      padding: 32px 40px 48px;
+    }
+
+    /* On desktop the active screen takes full width unless it's the menu,
+       which gets a two-column treatment */
+    .screen.active {
+      width: 100%;
+    }
+
+    /* Login screen — centered card on desktop */
+    #screen-login.active {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      justify-content: center;
+    }
+
+    /* Home screen — wider, two-column player setup */
+    #screen-home .term-box {
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #screen-home .btn-big {
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Menu screen — game list in a 2-col grid */
+    #screen-menu {
+      max-width: 900px;
+    }
+
+    #game-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    #game-list .btn + .btn {
+      margin-top: 0;
+    }
+
+    /* Game screen — wider content */
+    #screen-game #game-content {
+      max-width: 640px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Scoreboard — centered narrower */
+    #screen-scoreboard #scoreboard-list {
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* Nav bar — attach to bottom of content, not full viewport */
+    .nav-bar {
+      position: sticky;
+      bottom: 0;
+      left: unset;
+      right: unset;
+      max-width: 900px;
+      border-radius: 0 0 4px 4px;
+      margin-top: auto;
+    }
+
+    /* Bigger fonts for desktop */
+    .hdr-title {
+      font-size: 52px;
+    }
+
+    .btn {
+      font-size: 15px;
+      padding: 16px 24px;
+    }
+
+    .btn-big {
+      padding: 20px 24px;
+      font-size: 16px;
+    }
+
+    /* Term box wider */
+    .term-box {
+      padding: 20px 24px;
+    }
+
+    /* Statement / turn cards wider */
+    .statement {
+      font-size: 15px;
+    }
+
+    .turn-hdr {
+      margin: 24px 0 16px;
+    }
+
+    .turn-name {
+      font-size: clamp(24px, 4vw, 36px);
+    }
+  }
+
+  @media (min-width: 1100px) {
+    #app {
+      max-width: 1000px;
+    }
+
+    #game-list {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
   }
 </style>
 </head>
