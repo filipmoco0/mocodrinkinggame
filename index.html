@@ -636,25 +636,38 @@
     .score-bar-wrap { height: 8px; }
     .score-rank { font-size: 14px; width: 28px; }
 
-    /* Nav bar — attach to bottom of content, not full viewport */
+    /* Nav bar — full-width top bar on desktop */
     .nav-bar {
       position: sticky;
-      bottom: 0;
-      left: unset;
-      right: unset;
-      max-width: 900px;
-      border-radius: 0 0 4px 4px;
-      margin-top: auto;
+      top: 0;
+      bottom: unset;
+      left: 0;
+      right: 0;
+      max-width: 100%;
+      width: 100%;
+      border-top: none;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      margin-top: 0;
+      margin-bottom: 24px;
+      order: -1;
     }
 
     .nav-btn {
-      font-size: 13px;
-      padding: 16px 12px;
+      font-size: 15px;
+      padding: 18px 32px;
+      letter-spacing: 2px;
     }
 
     .nav-btn-icon {
-      font-size: 22px;
+      font-size: 24px;
       margin-bottom: 4px;
+    }
+
+    /* Push game content below the sticky nav */
+    #screen-game, #screen-menu, #screen-scoreboard {
+      display: flex;
+      flex-direction: column;
     }
 
     /* Bigger fonts for desktop */
