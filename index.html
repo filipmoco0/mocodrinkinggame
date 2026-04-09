@@ -321,11 +321,11 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .score-rank { color: var(--dim); font-size: 12px; width: 20px; }
-  .score-name { flex: 1; color: var(--white); font-size: 14px; }
-  .score-bar-wrap { width: 80px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .score-rank { color: var(--dim); font-size: 12px; width: 20px; flex-shrink: 0; }
+  .score-name { flex: 1; color: var(--white); font-size: 14px; min-width: 0; }
+  .score-bar-wrap { flex: 2; min-width: 60px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
   .score-bar { height: 100%; background: var(--green); border-radius: 3px; transition: width 0.4s ease; }
-  .score-sips { color: var(--amber); font-size: 13px; width: 50px; text-align: right; }
+  .score-sips { color: var(--amber); font-size: 13px; width: 60px; text-align: right; flex-shrink: 0; }
 
   /* ── ROUND COUNTER ── */
   .round-badge {
@@ -621,9 +621,20 @@
 
     /* Scoreboard — centered narrower */
     #screen-scoreboard #scoreboard-list {
-      max-width: 560px;
+      max-width: 640px;
       margin: 0 auto;
+      width: 100%;
     }
+
+    .score-row {
+      padding: 14px 0;
+      font-size: 16px;
+    }
+
+    .score-name { font-size: 16px; }
+    .score-sips { font-size: 15px; width: 70px; }
+    .score-bar-wrap { height: 8px; }
+    .score-rank { font-size: 14px; width: 28px; }
 
     /* Nav bar — attach to bottom of content, not full viewport */
     .nav-bar {
@@ -634,6 +645,16 @@
       max-width: 900px;
       border-radius: 0 0 4px 4px;
       margin-top: auto;
+    }
+
+    .nav-btn {
+      font-size: 13px;
+      padding: 16px 12px;
+    }
+
+    .nav-btn-icon {
+      font-size: 22px;
+      margin-bottom: 4px;
     }
 
     /* Bigger fonts for desktop */
